@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type User struct {
@@ -15,18 +16,24 @@ type User struct {
 }
 
 type Task struct {
-	ID       int
-	Title    string
-	Date     string
-	Category string
-	DoneTask bool
-	UserId   int
+	ID         int
+	Title      string
+	Date       string
+	CategoryId int
+	DoneTask   bool
+	UserId     int
+}
+type Category struct {
+	ID     int
+	Title  string
+	Color  string
+	UserId int
 }
 
 var userStorage []User
 var authUser *User
-
 var taskStorage []Task
+var categoryStorage []Category
 
 func main() {
 	command := flag.String("command", "no command", "Run Command")
@@ -87,17 +94,41 @@ func createTask() {
 	scanner.Scan()
 	date = scanner.Text()
 
-	fmt.Println("please enter the task category")
+	fmt.Println("please enter the task category id")
 	scanner.Scan()
 	category = scanner.Text()
 
+	//در خط زیر کتگوری ای دی رو از استرینگ به عدد تبدیل می کنیم
+
+	categoryId, err := strconv.Atoi(category)
+	if err != nil {
+		fmt.Println("category is not valid", err)
+
+		return
+	}
+	//چک می کنیم که کتگوری ای دی وجود داشته باشد و یوزر ای همان یور دای دی باشد که دراد دان را فراخانی می کند
+	isFound := false
+	for _, c := range categoryStorage {
+		if c.ID == categoryId && c.UserId == authUser.ID {
+			isFound = true
+
+			break
+		}
+	}
+
+	if !isFound {
+		fmt.Println("category not found")
+
+		return
+	}
+
 	task := Task{
-		ID:       len(taskStorage) + 1,
-		Title:    name,
-		Date:     date,
-		Category: category,
-		DoneTask: false,
-		UserId:   authUser.ID,
+		ID:         len(taskStorage) + 1,
+		Title:      name,
+		Date:       date,
+		CategoryId: categoryId,
+		DoneTask:   false,
+		UserId:     authUser.ID,
 	}
 	taskStorage = append(taskStorage, task)
 
@@ -114,6 +145,14 @@ func createCategory() {
 	color = scanner.Text()
 
 	fmt.Println("category:", title, color)
+
+	category := Category{
+		ID:     len(categoryStorage) + 1,
+		Title:  title,
+		Color:  color,
+		UserId: authUser.ID,
+	}
+	categoryStorage = append(categoryStorage, category)
 }
 
 func registerUser() {
