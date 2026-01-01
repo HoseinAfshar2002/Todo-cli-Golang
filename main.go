@@ -35,7 +35,11 @@ var authUser *User
 var taskStorage []Task
 var categoryStorage []Category
 
+const userStoragePath = "user.txt"
+
 func main() {
+	loadUserStorage()
+
 	command := flag.String("command", "no command", "Run Command")
 	flag.Parse()
 
@@ -182,6 +186,23 @@ func registerUser() {
 		Password: password,
 	}
 	userStorage = append(userStorage, user)
+
+	var file *os.File
+	//با مقدادیر زیر ما یک فایل ایجاد،اگر ایجاد شده بود اپند یا به ان چیزی اضافه می کنیم و ان را می خوانیم و اطلاعات یوزر خود را در این فایل سیو می کنیم
+	file, err := os.OpenFile(userStoragePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("can,t create or open file", err)
+
+		return
+	}
+	data := fmt.Sprintf("id: %v, name: %v, email: %v, password: %v\n ",
+		user.ID, user.Name, user.Email, user.Password)
+
+	var b = []byte(data)
+	file.Write(b)
+
+	file.Close()
+
 }
 
 func loginUser() {
@@ -219,5 +240,9 @@ func listTask() {
 			fmt.Println(task)
 		}
 	}
+
+}
+
+func loadUserStorage() {
 
 }
