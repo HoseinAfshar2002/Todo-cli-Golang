@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	json2 "encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -231,56 +232,24 @@ func listTask() {
 }
 
 func loadUserStorage() {
-	file, err := os.Open(userStoragePath)
-	if err != nil {
-		fmt.Println("not open file !", err)
-	}
 	data, err := os.ReadFile(userStoragePath)
-	_, err = file.Read(data)
 	if err != nil {
-		fmt.Println("not read file", err)
+		fmt.Println("cannot read file:", err)
+		return
 	}
-	var dataString string = string(data)
-	dataString = strings.Trim(dataString, "\n")
-	userSlice := strings.Split(dataString, "\n")
-	for _, u := range userSlice {
-		var user = User{}
 
-		userFild := strings.Split(u, ",")
-		for _, fild := range userFild {
-			value := strings.Split(fild, ": ")
-			if len(value) != 2 {
-				fmt.Println("not valid field , skip...", len(value))
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	for _, line := range lines {
+		var user User
+		err := json2.Unmarshal([]byte(line), &user)
+		if err != nil {
+			fmt.Println("error parsing user json:", err)
 
-				continue
-			}
-			fildName := strings.ReplaceAll(value[0], " ", "")
-			fildValue := value[1]
-
-			switch fildName {
-			case "id":
-				id, err := strconv.Atoi(fildValue)
-				if err != nil {
-					fmt.Println("str convert error", err)
-				}
-				user.ID = id
-
-			case "name":
-				user.Name = fildValue
-
-			case "email":
-				user.Email = fildValue
-
-			case "password":
-				user.Password = fildValue
-
-			}
-
+			continue
 		}
+		userStorage = append(userStorage, user)
 		fmt.Printf("user: %+v\n", user)
 	}
-
-	//fmt.Println(data)
 }
 
 func writeFileUser(user User) {
@@ -292,11 +261,17 @@ func writeFileUser(user User) {
 
 		return
 	}
-	data := fmt.Sprintf("id: %v, name: %v, email: %v, password: %v\n",
-		user.ID, user.Name, user.Email, user.Password)
+	defer file.Close()
+	var data []byte
 
-	var b = []byte(data)
-	file.Write(b)
+	data, err = json2.Marshal(user)
+	if err != nil {
+		fmt.Println("error to sava data format in the json", err)
 
-	file.Close()
+		return
+	}
+	data = append(data, '\n')
+
+	file.Write(data)
+
 }
