@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type User struct {
@@ -187,21 +188,7 @@ func registerUser() {
 	}
 	userStorage = append(userStorage, user)
 
-	var file *os.File
-	//با مقدادیر زیر ما یک فایل ایجاد،اگر ایجاد شده بود اپند یا به ان چیزی اضافه می کنیم و ان را می خوانیم و اطلاعات یوزر خود را در این فایل سیو می کنیم
-	file, err := os.OpenFile(userStoragePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println("can,t create or open file", err)
-
-		return
-	}
-	data := fmt.Sprintf("id: %v, name: %v, email: %v, password: %v\n ",
-		user.ID, user.Name, user.Email, user.Password)
-
-	var b = []byte(data)
-	file.Write(b)
-
-	file.Close()
+	writeFileUser(user)
 
 }
 
@@ -244,5 +231,72 @@ func listTask() {
 }
 
 func loadUserStorage() {
+	file, err := os.Open(userStoragePath)
+	if err != nil {
+		fmt.Println("not open file !", err)
+	}
+	data, err := os.ReadFile(userStoragePath)
+	_, err = file.Read(data)
+	if err != nil {
+		fmt.Println("not read file", err)
+	}
+	var dataString string = string(data)
+	dataString = strings.Trim(dataString, "\n")
+	userSlice := strings.Split(dataString, "\n")
+	for _, u := range userSlice {
+		var user = User{}
 
+		userFild := strings.Split(u, ",")
+		for _, fild := range userFild {
+			value := strings.Split(fild, ": ")
+			if len(value) != 2 {
+				fmt.Println("not valid field , skip...", len(value))
+
+				continue
+			}
+			fildName := strings.ReplaceAll(value[0], " ", "")
+			fildValue := value[1]
+
+			switch fildName {
+			case "id":
+				id, err := strconv.Atoi(fildValue)
+				if err != nil {
+					fmt.Println("str convert error", err)
+				}
+				user.ID = id
+
+			case "name":
+				user.Name = fildValue
+
+			case "email":
+				user.Email = fildValue
+
+			case "password":
+				user.Password = fildValue
+
+			}
+
+		}
+		fmt.Printf("user: %+v\n", user)
+	}
+
+	//fmt.Println(data)
+}
+
+func writeFileUser(user User) {
+	var file *os.File
+	//با مقدادیر زیر ما یک فایل ایجاد،اگر ایجاد شده بود اپند یا به ان چیزی اضافه می کنیم و ان را می خوانیم و اطلاعات یوزر خود را در این فایل سیو می کنیم
+	file, err := os.OpenFile(userStoragePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("can,t create or open file", err)
+
+		return
+	}
+	data := fmt.Sprintf("id: %v, name: %v, email: %v, password: %v\n",
+		user.ID, user.Name, user.Email, user.Password)
+
+	var b = []byte(data)
+	file.Write(b)
+
+	file.Close()
 }
