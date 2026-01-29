@@ -42,7 +42,14 @@ var categoryStorage []Category
 const userStoragePath = "user.txt"
 
 func main() {
-	loadUserStorage()
+	// loadUserStorage()
+
+	var userReadStore userReadStore
+	var userReadPath = fileStore{
+		filePath: "user.txt",
+	}
+	userReadStore = userReadPath
+	loadUserFromStorage(userReadStore)
 
 	command := flag.String("command", "no command", "Run Command")
 	flag.Parse()
@@ -69,13 +76,19 @@ func runCommand(command string) {
 		}
 
 	}
+
+
+var userFileStore = fileStore{
+	filePath: "user.txt",
+}
+
 	switch command {
 	case "create-task":
 		createTask()
 	case "create-category":
 		createCategory()
 	case "register-user":
-		registerUser()
+		registerUser(userFileStore)
 	case "list-task":
 		listTask()
 
@@ -163,7 +176,14 @@ func createCategory() {
 	categoryStorage = append(categoryStorage, category)
 }
 
-func registerUser() {
+type userWriteStore interface{
+	Save(u User)
+} 
+type userReadStore interface{
+	Load() []User
+}
+
+func registerUser(store userWriteStore) {
 	scanner := bufio.NewScanner(os.Stdin)
 	var id, name, email, password string
 
@@ -191,7 +211,8 @@ func registerUser() {
 	}
 	userStorage = append(userStorage, user)
 
-	writeFileUser(user)
+	// writeFileUser(user)
+	store.Save(user)
 
 }
 
@@ -232,27 +253,14 @@ func listTask() {
 	}
 
 }
+func loadUserFromStorage(store userReadStore){
+	users := store.Load()
+	userStorage = append(userStorage, users...)
 
-func loadUserStorage() {
-	data, err := os.ReadFile(userStoragePath)
-	if err != nil {
-		fmt.Println("cannot read file:", err)
-		return
-	}
 
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	for _, line := range lines {
-		var user User
-		err := json2.Unmarshal([]byte(line), &user)
-		if err != nil {
-			fmt.Println("error parsing user json:", err)
-
-			continue
-		}
-		userStorage = append(userStorage, user)
-		//fmt.Printf("user: %+v\n", user)
-	}
 }
+
+
 
 func writeFileUser(user User) {
 	var file *os.File
@@ -281,4 +289,36 @@ func writeFileUser(user User) {
 func hashPassword(password string) string {
 	hash := md5.Sum([]byte(password))
 	return hex.EncodeToString(hash[:])
+}
+
+
+type fileStore struct {
+	filePath string
+}
+
+func (f fileStore)Save(u User){
+	writeFileUser(u)
+}
+
+func (f fileStore) Load()[]User{
+	var uStore []User
+		data, err := os.ReadFile(userStoragePath)
+	if err != nil {
+		fmt.Println("cannot read file:", err)
+		return nil
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	for _, line := range lines {
+		var user User
+		err := json2.Unmarshal([]byte(line), &user)
+		if err != nil {
+			fmt.Println("error parsing user json:", err)
+
+			continue
+		}
+		uStore = append(uStore, user)
+		//fmt.Printf("user: %+v\n", user)
+	}
+	return uStore
 }
