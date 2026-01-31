@@ -1,23 +1,17 @@
 package main
 
 import (
+	"Todo-Cli-With-Golang/contract"
+	"Todo-Cli-With-Golang/entity"
+	"Todo-Cli-With-Golang/filestore"
 	"bufio"
 	"crypto/md5"
 	"encoding/hex"
-	json2 "encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 )
-
-type User struct {
-	ID       int
-	Name     string
-	Email    string
-	Password string
-}
 
 type Task struct {
 	ID         int
@@ -34,29 +28,27 @@ type Category struct {
 	UserId int
 }
 
-var userStorage []User
-var authUser *User
+var userStorage []entity.User
+var authUser *entity.User
 var taskStorage []Task
 var categoryStorage []Category
 
 const userStoragePath = "user.txt"
 
+var userFileStore = filestore.New(userStoragePath)
+
 func main() {
 	// loadUserStorage()
 
-	var userReadStore userReadStore
-	var userReadPath = fileStore{
-		filePath: "user.txt",
-	}
-	userReadStore = userReadPath
-	loadUserFromStorage(userReadStore)
+users:=userFileStore.Load()
+userStorage = append(userStorage, users...)
 
 	command := flag.String("command", "no command", "Run Command")
 	flag.Parse()
 
 	// ایجاد یک حلققه برای اجرای کامند های ما
 	for {
-		runCommand(*command)
+		runCommand(userFileStore,*command)
 		scanner := bufio.NewScanner(os.Stdin)
 		fmt.Println("please enter the new  command")
 		scanner.Scan()
@@ -66,7 +58,7 @@ func main() {
 	}
 
 }
-func runCommand(command string) {
+func runCommand(_ contract.UserWriteStore,command string) {
 	if command != "register-user" && command != "exit" && authUser == nil {
 
 		loginUser()
@@ -76,11 +68,6 @@ func runCommand(command string) {
 		}
 
 	}
-
-
-var userFileStore = fileStore{
-	filePath: "user.txt",
-}
 
 	switch command {
 	case "create-task":
@@ -176,16 +163,11 @@ func createCategory() {
 	categoryStorage = append(categoryStorage, category)
 }
 
-type userWriteStore interface{
-	Save(u User)
-} 
-type userReadStore interface{
-	Load() []User
-}
 
-func registerUser(store userWriteStore) {
+
+func registerUser(store contract.UserWriteStore) {
 	scanner := bufio.NewScanner(os.Stdin)
-	var id, name, email, password string
+	var  name, email, password string
 
 	fmt.Println("please enter the user name")
 	scanner.Scan()
@@ -199,11 +181,8 @@ func registerUser(store userWriteStore) {
 	scanner.Scan()
 	password = scanner.Text()
 
-	fmt.Println("user:", name, email, password)
-	id = email
-	fmt.Println("user Id:", id, "user email:", email, "user password:", password)
 	hashPassword(password)
-	user := User{
+	user := entity.User{
 		ID:       len(userStorage) + 1,
 		Name:     name,
 		Email:    email,
@@ -253,72 +232,8 @@ func listTask() {
 	}
 
 }
-func loadUserFromStorage(store userReadStore){
-	users := store.Load()
-	userStorage = append(userStorage, users...)
-
-
-}
-
-
-
-func writeFileUser(user User) {
-	var file *os.File
-	//با مقدادیر زیر ما یک فایل ایجاد،اگر ایجاد شده بود اپند یا به ان چیزی اضافه می کنیم و ان را می خوانیم و اطلاعات یوزر خود را در این فایل سیو می کنیم
-	file, err := os.OpenFile(userStoragePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Println("can,t create or open file", err)
-
-		return
-	}
-	defer file.Close()
-	var data []byte
-
-	data, err = json2.Marshal(user)
-	if err != nil {
-		fmt.Println("error to sava data format in the json", err)
-
-		return
-	}
-	data = append(data, '\n')
-
-	file.Write(data)
-
-}
 
 func hashPassword(password string) string {
 	hash := md5.Sum([]byte(password))
 	return hex.EncodeToString(hash[:])
-}
-
-
-type fileStore struct {
-	filePath string
-}
-
-func (f fileStore)Save(u User){
-	writeFileUser(u)
-}
-
-func (f fileStore) Load()[]User{
-	var uStore []User
-		data, err := os.ReadFile(userStoragePath)
-	if err != nil {
-		fmt.Println("cannot read file:", err)
-		return nil
-	}
-
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	for _, line := range lines {
-		var user User
-		err := json2.Unmarshal([]byte(line), &user)
-		if err != nil {
-			fmt.Println("error parsing user json:", err)
-
-			continue
-		}
-		uStore = append(uStore, user)
-		//fmt.Printf("user: %+v\n", user)
-	}
-	return uStore
 }
